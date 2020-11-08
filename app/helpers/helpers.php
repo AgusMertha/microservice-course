@@ -9,6 +9,7 @@ function getUser($id)
   try {
     $response = Http::timeout(10)->get($url);
     $data = $response->json();
+    $data['http_code'] = $response->getStatusCode();
 
     return $data;
   } catch (\Throwable $th) {
@@ -37,7 +38,7 @@ function getUserByIds($ids = [])
     $response = Http::timeout(10)->get($url, ['user_ids' => $ids]);
     $data = $response->json();
     $data['http_code'] = $response->getStatusCode();
-
+    
     return $data;
 
   } catch (\Throwable $th){

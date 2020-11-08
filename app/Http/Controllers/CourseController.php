@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Mentor;
 use App\Models\Course;
+use App\Models\Review;
+use App\Models\MyCourse;
+use App\Models\Chapter;
 use Illuminate\Support\Facades\Validator;
 
 class CourseController extends Controller
@@ -32,7 +35,7 @@ class CourseController extends Controller
 
     public function show($id)
     {
-        $course = Course::find($id);
+        $course = Course::with('chapters.lessons')->with('mentor')->with('images')->find($id);
 
         if(!$course)
         {
@@ -42,10 +45,37 @@ class CourseController extends Controller
             ], 404);
         }
 
+        $reviews = Review::where('course_id', $id)->get()->toArray();
+        if(count($reviews) > 0)
+        {
+            $userIds = array_column($reviews, 'user_id');
+            $users = getUserByIds($userIds);
+
+            if($users['status'] === "error")
+            {
+                $reviews = [];
+            }
+            else{
+              foreach($reviews as $key => $review)
+              {
+                $userIndex = array_search($review['user_id'], array_column($users['data']['users'], 'id'));
+                $reviews[$key]['users'] = $users['data']['users'][$userIndex];
+              }  
+            }
+        }
+
+        $totalStudent = MyCourse::where('course_id', $id)->count();
+        $totalVideos = Chapter::where('course_id', $id)->withCount('lessons')->get()->toArray();
+        $finalTotalVideos = array_sum(array_column($totalVideos, 'lessons_count'));
+
+        $course['reviews'] = $reviews;
+        $course['total_student'] = $totalStudent;
+        $course['total_videos'] = $finalTotalVideos;
+
         return response()->json([
             "status" => "success",
             "data" => $course
-        ], 200);
+        ]);
     }
 
     public function create(Request $request)
@@ -124,15 +154,18 @@ class CourseController extends Controller
         }
 
         // cek mentor
-        $mentorId = $request->input('mentor_id');
-        $mentor = Mentor::find($mentorId);
-
-        if(!$mentor)
+        if($request->input('mentor_id'))
         {
-            return response()->json([
-                "status" => "error",
-                "message" => "Mentor not found" 
-            ], 404);
+            $mentorId = $request->input('mentor_id');
+            $mentor = Mentor::find($mentorId);
+
+            if(!$mentor)
+            {
+                return response()->json([
+                    "status" => "error",
+                    "message" => "Mentor not found" 
+                ], 404);
+            }
         }
 
         $course->fill($data);
