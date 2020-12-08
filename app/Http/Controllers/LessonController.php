@@ -103,14 +103,16 @@ class LessonController extends Controller
             ], 404);
         }
 
-        $chapter = Chapter::find($request->input('chapter_id'));
-
-        if(!$chapter)
+        if($request->input("chapter_id"))
         {
-            return response()->json([
-                "status" => "error",
-                "message" => "Chapter not found" 
-            ], 404);
+            $chapter = Chapter::find($request->input('chapter_id'));
+            if(!$chapter)
+            {
+                return response()->json([
+                    "status" => "error",
+                    "message" => "Chapter not found" 
+                ], 404);
+            }
         }
 
         $lesson->fill($data);
